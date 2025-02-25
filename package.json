@@ -1,6 +1,10 @@
 {
+  "type": "module",
   "dependencies": {
     "@supabase/supabase-js": "^2.49.1",
-    "dotenv": "^16.4.7"
+    "chalk": "^5.4.1",
+    "commander": "^13.1.0",
+    "dotenv": "^16.4.7",
+    "inquirer": "^12.4.2"
   }
 }
