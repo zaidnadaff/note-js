@@ -1,22 +1,51 @@
 import "dotenv/config";
 import { execSync } from "child_process";
 import inquirer from "inquirer";
-import fs from "fs";
+import fs from "fs"; // Use promise-based API
+import { existsSync, writeFileSync, readFileSync } from "fs"; // Import specific functions
 import path from "path";
-import os, { type } from "os";
+import os from "os";
 
-const configPath = path.join(
-  process.env.HOME || os.homedir(),
-  ".config",
-  ".note-js.config.json"
-);
+const platform = process.platform;
 
+function getConfigPath() {
+  const configDirs = {
+    win32: path.join(
+      process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"),
+      "note-js"
+    ),
+    linux: path.join(os.homedir(), ".config"),
+    darwin: path.join(os.homedir(), ".notes-js"),
+  };
+
+  const configFiles = {
+    win32: "config.json",
+    linux: ".note-js.config.json",
+    darwin: ".config.json",
+  };
+
+  if (!configDirs[platform]) {
+    throw new Error("Unsupported platform");
+  }
+
+  const dirPath = configDirs[platform];
+  const configPath = path.join(dirPath, configFiles[platform]);
+
+  // Create directory if it doesn't exist
+  if (!existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+
+  return configPath;
+}
+
+const configPath = getConfigPath();
 const commonEditors = ["nano", "vim", "code", "gedit", "notepad"];
 
 function isEditorAvailable(editor) {
   try {
     const command =
-      process.platform === "win32" ? `where ${editor}` : `command -v ${editor}`;
+      platform === "win32" ? `where ${editor}` : `command -v ${editor}`;
     execSync(command, { stdio: "ignore" });
     return true;
   } catch {
@@ -24,17 +53,13 @@ function isEditorAvailable(editor) {
   }
 }
 
-const availableEditors = commonEditors.filter(isEditorAvailable);
-
-function loadEditorPrefernce() {
+function loadEditorPreference() {
   try {
-    if (fs.existsSync(configPath)) {
-      const config = fs.readFileSync(configPath, "utf-8");
-      if (config) {
-        return JSON.parse(config).editor || null;
-      }
-      return null;
+    if (existsSync(configPath)) {
+      const config = JSON.parse(readFileSync(configPath, "utf-8"));
+      return config?.editor || null;
     }
+    return null;
   } catch (error) {
     console.log("Error reading config file, resetting preference");
     return null;
@@ -42,12 +67,13 @@ function loadEditorPrefernce() {
 }
 
 function saveEditorPreference(editor) {
-  fs.writeFileSync(configPath, JSON.stringify({ editor }, null, 2), "utf-8");
+  writeFileSync(configPath, JSON.stringify({ editor }, null, 2), "utf-8");
 }
 
 async function chooseEditor() {
+  // Check available editors once and store the result
+  const availableEditors = commonEditors.filter(isEditorAvailable);
   let editorChoices = [...availableEditors, "custom"];
-  console.log(availableEditors);
 
   if (editorChoices.length === 1) {
     console.log(
@@ -55,6 +81,7 @@ async function chooseEditor() {
     );
     editorChoices = ["custom"];
   }
+
   const { chosenEditor } = await inquirer.prompt([
     {
       type: "list",
@@ -79,8 +106,9 @@ async function chooseEditor() {
   saveEditorPreference(editor);
   return editor;
 }
+
 async function menu() {
-  const action = await inquirer.prompt([
+  const { action } = await inquirer.prompt([
     {
       type: "list",
       name: "action",
@@ -88,6 +116,7 @@ async function menu() {
       choices: ["Write a journal entry", "Edit your preferred editor", "exit"],
     },
   ]);
+
   switch (action) {
     case "Write a journal entry":
       return true;
@@ -97,13 +126,17 @@ async function menu() {
     case "exit":
       process.exit(0);
   }
-  menu();
+
+  return menu(); // Return the result of the recursive call
 }
 
 async function main() {
-  console.log(loadEditorPrefernce());
-  //   const editor = await chooseEditor();
-  //   console.log(editor);
-  //   console.log(loadEditorPrefernce());
+  console.log(loadEditorPreference());
+  // Uncomment these lines for testing
+  // const editor = await chooseEditor();
+  // console.log(editor);
+  // console.log(loadEditorPreference());
+  menu();
 }
+
 main();
