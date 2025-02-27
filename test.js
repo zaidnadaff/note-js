@@ -31,7 +31,6 @@ function getConfigPath() {
   const dirPath = configDirs[platform];
   const configPath = path.join(dirPath, configFiles[platform]);
 
-  // Create directory if it doesn't exist
   if (!existsSync(dirPath)) {
     fs.mkdirSync(dirPath, { recursive: true });
   }
