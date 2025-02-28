@@ -2,6 +2,7 @@ import inquirer from "inquirer";
 import { getAvailableEditors } from "../utils/editors.js";
 import chalk from "chalk";
 import fs from "fs";
+import { getConfigPath } from "./fileConfig.js";
 
 export async function getUserName(configPath) {
   const { userName } = await inquirer.prompt([
@@ -16,6 +17,9 @@ export async function getUserName(configPath) {
 }
 
 export async function getEditorPreference(configPath) {
+  if (!configPath) {
+    configPath = getConfigPath(process.platform);
+  }
   let editorChoices = getAvailableEditors();
   if (editorChoices.length === 1) {
     console.log("No known editors detected! You must enter one manually.");
